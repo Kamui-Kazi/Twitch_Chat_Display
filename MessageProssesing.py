@@ -1,10 +1,10 @@
 import time
 import concurrent.futures
+import keyboard
 import random
 import pyautogui
 import TwitchConnection
-from tkinter import *
-from tkinter import ttk
+
 
 ##################### GAME VARIABLES #####################
 
@@ -27,7 +27,8 @@ MAX_QUEUE_LENGTH = 20
 MAX_WORKERS = 100 # Maximum number of threads you can process at a time 
 
 last_time = time.time()
-message_queue = []
+message_queue = ['Hi', 'Bye']
+name_queue = ['Kamui_Kazi', 'Kamui_Kazi']
 thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS)
 active_tasks = []
 pyautogui.FAILSAFE = False
@@ -44,54 +45,13 @@ while countdown > 0:
 t = TwitchConnection.Twitch()
 t.twitch_connect(TWITCH_CHANNEL)
 
-def handle_message(message):
-    try:
+def handle_message():
+        message = t.twitch_receive_messages();
         msg = message['message'].lower()
         username = message['username'].lower()
- 
-        print("Got this message from " + username + ": " + msg)
+        message_queue.pop(0)
+        message_queue.append(msg)
+        name_queue.pop(0)
+        name_queue.append(username)
         
-    except Exception as e:
-        print("Encountered exception: " + str(e))
-
-while True:
-
-    active_tasks = [t for t in active_tasks if not t.done()]
-
-    #Check for new messages
-    new_messages = t.twitch_receive_messages();
-    if new_messages:
-        message_queue += new_messages; # New messages are added to the back of the queue
-        message_queue = message_queue[-MAX_QUEUE_LENGTH:] # Shorten the queue to only the most recent X messages
-
-    messages_to_handle = []
-    if not message_queue:
-        # No messages in the queue
-        last_time = time.time()
-    else:
-        # Determine how many messages we should handle now
-        r = 1 if MESSAGE_RATE == 0 else (time.time() - last_time) / MESSAGE_RATE
-        n = int(r * len(message_queue))
-        if n > 0:
-            # Pop the messages we want off the front of the queue
-            messages_to_handle = message_queue[0:n]
-            del message_queue[0:n]
-            last_time = time.time();
-
-    # If user presses Shift+Backspace, automatically end the program
-    if keyboard.is_pressed('shift+backspace'):
-        exit()
-
-    if not messages_to_handle:
-        continue
-    else:
-        for message in messages_to_handle:
-            if len(active_tasks) <= MAX_WORKERS:
-                active_tasks.append(thread_pool.submit(handle_message, message))
-            else:
-                print(f'WARNING: active tasks ({len(active_tasks)}) exceeds number of workers ({MAX_WORKERS}). ({len(message_queue)} messages in the queue)')
-                
-def create_Window ():
-    root = Tk()
-    root.title('Episodic time break down')
-    root.grid()
+        print("Got this message from " + name_queue[0] + ": " + message_queue[0])
